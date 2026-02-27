@@ -38,7 +38,7 @@ sap-ml-ewm-replenishment/
    pip install -r deployment/requirements.txt
    ```
 2. Prepare and clean demand history data via `src/data_preprocessing.py`.
-3. Train forecasting model(s) using notebook or `src/forecast_model.py`.
+3. Train forecasting model(s) using notebook or `src/forecast_model.py` (includes per-SKU Prophet training loop).
 4. Generate replenishment recommendations via `src/replenishment_logic.py`.
 5. Serve forecast/replenishment endpoints through `src/api_service.py`.
 
