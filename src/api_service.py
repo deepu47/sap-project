@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+<<<<<<< HEAD
+from fastapi import FastAPI
+
+app = FastAPI(title="SAP EWM Forecast & Replenishment Service")
+
+=======
 from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,11 +38,14 @@ class ReplenishRequest(BaseModel):
     forecast_data: list[dict[str, Any]]
     inventory_data: list[dict[str, Any]]
     network_data: list[dict[str, Any]]
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 
 @app.get("/health")
 def health() -> dict[str, str]:
     """Service health endpoint."""
     return {"status": "ok"}
+<<<<<<< HEAD
+=======
 
 @app.post("/forecast/{sku}")
 def forecast_sku(sku: str, req: ForecastRequest):
@@ -66,3 +75,4 @@ frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b

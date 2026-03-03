@@ -1,7 +1,19 @@
 let forecastChart = null;
 
+function parseCSV(file) {
+    return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: (results) => resolve(results.data),
+            error: (err) => reject(err)
+        });
+    });
+}
+
 document.getElementById('run-demo-btn').addEventListener('click', async () => {
-    const sku = document.getElementById('sku-select').value;
+    let sku = document.getElementById('sku-select').value;
     const forceShortage = document.getElementById('fail-safe-toggle').checked;
 
     // Defensive check in case browser is caching old HTML
@@ -11,6 +23,11 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
     const fcSpinner = document.getElementById('forecast-spinner');
     const rtContent = document.getElementById('routing-content');
     const rtSpinner = document.getElementById('routing-spinner');
+
+    // CSV File inputs
+    const demandFile = document.getElementById('demand-csv')?.files[0];
+    const inventoryFile = document.getElementById('inventory-csv')?.files[0];
+    const networkFile = document.getElementById('network-csv')?.files[0];
 
     // Reset UI
     if (forecastChart) {
@@ -25,17 +42,30 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
     rtContent.innerText = '';
 
     // 1. Generate Historical Target Data
-    const history = [];
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() - 30);
-
-    for (let i = 0; i < 30; i++) {
-        const d = new Date(baseDate);
-        d.setDate(d.getDate() + i);
-        history.push({
-            date: d.toISOString().split('T')[0],
-            demand_qty: Math.floor(Math.random() * 20) + 10
-        });
+    let history = [];
+    if (demandFile) {
+        try {
+            history = await parseCSV(demandFile);
+            // If the user uploaded a file, we should infer the SKU from the first row if present
+            if (history.length > 0 && history[0].sku) {
+                sku = history[0].sku;
+            }
+        } catch (e) {
+            console.error("Error parsing demand CSV", e);
+            alert("Error parsing Demand CSV. Make sure it has 'date' and 'demand_qty' columns.");
+            return;
+        }
+    } else {
+        const baseDate = new Date();
+        baseDate.setDate(baseDate.getDate() - 30);
+        for (let i = 0; i < 30; i++) {
+            const d = new Date(baseDate);
+            d.setDate(d.getDate() + i);
+            history.push({
+                date: d.toISOString().split('T')[0],
+                demand_qty: Math.floor(Math.random() * 20) + 10
+            });
+        }
     }
 
     try {
@@ -58,9 +88,15 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
         if (!forecastRes.ok || forecastData.detail) {
             console.warn("Forecast failed. Generating synthetic forecast for demo continuity.");
             forecastData = [];
-            const fd = new Date();
-            for (let i = 0; i < 14; i++) {
-                const d = new Date(fd);
+
+            // Try to find the last date to continue from
+            let lastDate = new Date();
+            if (history.length > 0) {
+                lastDate = new Date(history[history.length - 1].date);
+            }
+
+            for (let i = 1; i <= 14; i++) {
+                const d = new Date(lastDate);
                 d.setDate(d.getDate() + i);
                 let qty = parseFloat((15 + Math.random() * 5).toFixed(2));
                 forecastData.push({
@@ -85,8 +121,9 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
 
         // Pad the forecast array so it starts exactly where history leaves off visually
         const futureDataPadding = Array(history.length - 1).fill(null);
-        // We add the very last historical point to connect the lines
-        futureDataPadding.push(history[history.length - 1].demand_qty);
+        if (history.length > 0) {
+            futureDataPadding.push(history[history.length - 1].demand_qty);
+        }
         const futureData = futureDataPadding.concat(forecastData.map(f => f.forecast_qty));
 
         forecastChart = new Chart(ctx, {
@@ -136,24 +173,54 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
         // 2. TRIGGER REPLENISHMENT ENDPOINT WITH FAIL-SAFE
         rtSpinner.style.display = 'block';
 
-        let inventoryData = [
-            { sku: sku, site: 'DC1', on_hand_qty: forceShortage ? 5 : 500 }, // DC1 stock
-            { sku: sku, site: 'DC2', on_hand_qty: 800 }
-        ];
+        let inventoryData = [];
+        if (inventoryFile) {
+            try {
+                inventoryData = await parseCSV(inventoryFile);
+            } catch (e) {
+                console.error(e);
+                alert("Error parsing Inventory CSV");
+            }
+        }
 
-        let networkData = [
-            { source_site: 'DC2', target_site: 'DC1', transit_time_days: 1, cost: 50 },
-            { source_site: 'VENDOR_A', target_site: 'DC1', transit_time_days: 3, cost: 15 }
-        ];
+        if (inventoryData.length === 0) {
+            inventoryData = [
+                { sku: sku, site: 'DC1', on_hand_qty: forceShortage ? 5 : 500 }, // DC1 stock
+                { sku: sku, site: 'DC2', on_hand_qty: 800 }
+            ];
+        }
+
+        let networkData = [];
+        if (networkFile) {
+            try {
+                networkData = await parseCSV(networkFile);
+            } catch (e) {
+                console.error(e);
+                alert("Error parsing Network CSV");
+            }
+        }
+
+        if (networkData.length === 0) {
+            networkData = [
+                { source_site: 'DC2', target_site: 'DC1', transit_time_days: 1, cost: 50 },
+                { source_site: 'VENDOR_A', target_site: 'DC1', transit_time_days: 3, cost: 15 }
+            ];
+        }
 
         if (scenario === 'logistic_issue') {
-            // DC2 goes completely offline, forcing the router to find an external vendor with a longer wait time
-            networkData = networkData.filter(n => n.source_site !== 'DC2');
+            // Find the fastest route and simulate it going offline
+            if (networkData.length > 1) {
+                networkData.sort((a, b) => a.transit_time_days - b.transit_time_days);
+                const fastestSource = networkData[0].source_site;
+                networkData = networkData.filter(n => n.source_site !== fastestSource);
+            } else {
+                networkData = networkData.filter(n => n.source_site !== 'DC2');
+            }
         }
 
         const forecastForReplenish = forecastData.map(f => ({
             sku: sku,
-            site: 'DC1',
+            site: 'DC1', // default assumption for target mapping
             date: f.date,
             forecast_qty: f.forecast_qty
         }));
@@ -179,7 +246,7 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
         } else {
             let msg = `⚠️ Shortage Detected at DC1\n\nFail-Safe Logistics Evaluation:\n`;
             if (scenario === 'logistic_issue') {
-                msg += `- Primary DC2 Offline/Unreachable.\n- Evaluating secondary Tier 2 networks...\n\n`;
+                msg += `- Primary network node offline/unreachable.\n- Evaluating secondary Tier 2 networks...\n\n`;
             } else if (scenario === 'high_demand') {
                 msg += `- Unprecedented Demand Spike Detected.\n- Depleting stock faster than standard lead time.\n\n`;
             }
@@ -192,7 +259,7 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
         fcSpinner.style.display = 'none';
         rtSpinner.style.display = 'none';
         rtContent.style.display = 'block';
-        rtContent.innerText = `Error connecting to FastAPI backend: ${err.message}\nMake sure uvicorn is running.`;
+        rtContent.innerText = `Error connecting to FastAPI backend: ${err.message}\nMake sure that the backend API is running.`;
         rtContent.style.color = '#fca5a5';
     }
 });

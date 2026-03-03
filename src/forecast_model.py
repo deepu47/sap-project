@@ -5,9 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
+<<<<<<< HEAD
+from prophet import Prophet
+=======
 import numpy as np
 from prophet import Prophet
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 
 
 def _normalize_prophet_input(df: pd.DataFrame) -> pd.DataFrame:
@@ -88,6 +92,8 @@ def prophet_forecast_by_sku(
         )
 
     return pd.concat(forecasts, ignore_index=True)
+<<<<<<< HEAD
+=======
 
 
 def evaluate_forecast(actual_df: pd.DataFrame, forecast_df: pd.DataFrame) -> dict[str, float]:
@@ -101,3 +107,4 @@ def evaluate_forecast(actual_df: pd.DataFrame, forecast_df: pd.DataFrame) -> dic
     mae = mean_absolute_error(merged["demand_qty"], merged["forecast_qty"])
     rmse = np.sqrt(mean_squared_error(merged["demand_qty"], merged["forecast_qty"]))
     return {"mae": float(mae), "rmse": float(rmse)}
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b

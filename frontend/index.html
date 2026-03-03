@@ -7,7 +7,8 @@
     <title>SAP ML Replenishment Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="dashboard.css?v=4">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="dashboard.css?v=5">
 </head>
 
 <body>
@@ -45,6 +46,27 @@
                         <span class="toggle-text">Trigger Fail-safe Evaluation</span>
                     </div>
                 </div>
+
+                <h3
+                    style="margin-top: 1rem; color: #cbd5e1; font-size: 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem;">
+                    Feed Real SAP EWM Data (Optional)</h3>
+
+                <div class="input-group">
+                    <label for="demand-csv">Historical Demand CSV (cols: sku, date, demand_qty):</label>
+                    <input type="file" id="demand-csv" accept=".csv" class="premium-input" style="padding: 0.5rem;">
+                </div>
+
+                <div class="input-group">
+                    <label for="inventory-csv">Current Inventory CSV (cols: sku, site, on_hand_qty):</label>
+                    <input type="file" id="inventory-csv" accept=".csv" class="premium-input" style="padding: 0.5rem;">
+                </div>
+
+                <div class="input-group">
+                    <label for="network-csv">Network Topology CSV (cols: target_site, source_site, transit_time_days,
+                        cost):</label>
+                    <input type="file" id="network-csv" accept=".csv" class="premium-input" style="padding: 0.5rem;">
+                </div>
+
                 <button id="run-demo-btn" class="primary-btn">Run ML Pipeline</button>
             </div>
 
@@ -65,7 +87,7 @@
             </div>
         </main>
     </div>
-    <script src="main.js?v=4"></script>
+    <script src="main.js?v=5"></script>
 </body>
 
 </html>

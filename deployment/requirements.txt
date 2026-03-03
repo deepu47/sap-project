@@ -2,5 +2,8 @@ fastapi==0.115.0
 uvicorn==0.30.6
 pandas==2.2.2
 prophet==1.1.5
+<<<<<<< HEAD
+=======
 scikit-learn==1.3.0
 numpy<2.0.0
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
