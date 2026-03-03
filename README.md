@@ -2,7 +2,7 @@
 # Scalable Multi-SKU Demand Forecasting & Predictive Replenishment in SAP S/4HANA EWM using SAP BTP AI Core
 
 This repository provides a starter implementation for building a scalable, multi-SKU forecasting and replenishment workflow for **SAP S/4HANA EWM**, powered by **SAP BTP AI Core**.
-=======
+
 # Demand Forecasting & Predictive Replenishment in SAP S/4HANA EWM using SAP BTP AI Core
 
 
