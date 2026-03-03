@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP ML Replenishment Architecture</title>
+    <style>
+        :root {
+            --bg-color: #0b1120;
+            --text-color: #f8fafc;
+            --sap-gradient: linear-gradient(135deg, #0284c7, #2563eb);
+            --btp-gradient: linear-gradient(135deg, #9333ea, #ec4899);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(2, 132, 199, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        Header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #60a5fa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+
+        .architecture-container {
+            display: flex;
+            gap: 4rem;
+            align-items: stretch;
+            justify-content: center;
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+            animation: slideUp 1s ease-in-out;
+        }
+
+        .system-block {
+            flex: 1;
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        .system-block:hover {
+            transform: translateY(-5px);
+        }
+
+        .sap-system {
+            background: var(--sap-gradient);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btp-system {
+            background: var(--btp-gradient);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .block-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .block-title span {
+            background: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .components-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .component {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            cursor: default;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .component::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+            transform: skewX(-20deg);
+            transition: 0.5s;
+        }
+
+        .component:hover::before {
+            left: 150%;
+        }
+
+        .component:hover {
+            background: rgba(255,255,255,0.1);
+            transform: scale(1.02);
+        }
+
+        .icon {
+            font-size: 2rem;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .details h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .details p {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        /* Connector (Arrows between columns) */
+        .api-connector {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .api-badge {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 0.75rem 1.5rem;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #38bdf8;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: pulseApi 2s infinite;
+        }
+
+        .flow-arrows {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+            z-index: -1;
+        }
+
+        .arrow {
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #ec4899);
+            position: relative;
+            opacity: 0.6;
+        }
+
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -4px;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 8px solid #ec4899;
+        }
+        
+        .arrow.reverse {
+            background: linear-gradient(90deg, #ec4899, #3b82f6);
+        }
+        
+        .arrow.reverse::after {
+            left: 0;
+            right: auto;
+            border-left: none;
+            border-right: 8px solid #ec4899;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: -4.5px;
+            box-shadow: 0 0 10px #fff;
+            animation: travel 2s linear infinite;
+        }
+
+        .arrow.reverse .pulse-dot {
+            animation: travelReverse 2.5s linear infinite;
+        }
+
+        @keyframes travel {
+            0% { left: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        @keyframes travelReverse {
+            0% { right: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { right: 100%; opacity: 0; }
+        }
+
+        @keyframes pulseApi {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .architecture-container {
+                flex-direction: column;
+                gap: 2rem;
+            }
+            .api-connector {
+                flex-direction: row;
+                margin: 2rem 0;
+            }
+            .arrow {
+                width: 3px;
+                height: 100px;
+                background: linear-gradient(180deg, #3b82f6, #ec4899);
+            }
+            .arrow::after {
+                bottom: 0; top: auto; right: -4px; left: auto;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 8px solid #ec4899;
+            }
+            @keyframes travel {
+                0% { top: 0; }
+                100% { top: 100%; }
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Supply Chain ML Intelligence</h1>
+        <p class="subtitle">Scalable Multi-SKU Demand Forecasting & Fail-Safe Replenishment Routing</p>
+    </header>
+
+    <div class="architecture-container">
+        
+        <!-- SAP Environment -->
+        <div class="system-block sap-system">
+            <h2 class="block-title">📦 <span>SAP S/4HANA EWM</span></h2>
+            
+            <div class="components-grid">
+                <div class="component">
+                    <div class="icon">📊</div>
+                    <div class="details">
+                        <h3>Inventory Data</h3>
+                        <p>Real-time stock levels, batches, and handling units across Distribution Centers.</p>
+                    </div>
+                </div>
+                
+                <div class="component">
+                    <div class="icon">📈</div>
+                    <div class="details">
+                        <h3>Historical Demand</h3>
+                        <p>Extracted multi-year goods issue data serving as ground truth for training.</p>
+                    </div>
+                </div>
+
+                <div class="component">
+                    <div class="icon">🗺️</div>
+                    <div class="details">
+                        <h3>Network Topology</h3>
+                        <p>Freight routes, cross-dock possibilities, transit times, AND logistic costs.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Integration Bridge -->
+        <div class="api-connector">
+            <div class="flow-arrows">
+                <div class="arrow"><div class="pulse-dot"></div></div>
+                <div class="arrow reverse"><div class="pulse-dot"></div></div>
+                <div class="arrow"><div class="pulse-dot"></div></div>
+            </div>
+            <div class="api-badge">
+                OData / REST V4 Sync
+            </div>
+        </div>
+
+        <!-- BTP AI Core Environment -->
+        <div class="system-block btp-system">
+            <h2 class="block-title">🧠 <span>SAP BTP AI Core</span></h2>
+            
+            <div class="components-grid">
+                <div class="component">
+                    <div class="icon">🧹</div>
+                    <div class="details">
+                        <h3>Data Preprocessor</h3>
+                        <p>Auto-cleans time-series, handles missing values, and clips 99% percentile demand spikes.</p>
+                    </div>
+                </div>
+
+                <div class="component">
+                    <div class="icon">📉</div>
+                    <div class="details">
+                        <h3>Prophet Forecasting Model</h3>
+                        <p>Scalable ML engine generating 14-period daily predictions dynamically per SKU.</p>
+                    </div>
+                </div>
+
+                <div class="component">
+                    <div class="icon">⚖️</div>
+                    <div class="details">
+                        <h3>Dynamic Reorder Point Logic</h3>
+                        <p>Computes safety stock buffered mathematically against lead-time variability.</p>
+                    </div>
+                </div>
+
+                <div class="component" style="border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.15);">
+                    <div class="icon">🚦</div>
+                    <div class="details">
+                        <h3 style="color:#000; text-shadow:0 0 5px #fff;">Fail-Safe Logistic Router</h3>
+                        <p style="color:#f1f5f9;">Sweeps alternative DCs automatically when primary source faces a shortage.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
