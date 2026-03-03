@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
+<<<<<<< HEAD
 from prophet import Prophet
+=======
+import numpy as np
+from prophet import Prophet
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 
 
 def _normalize_prophet_input(df: pd.DataFrame) -> pd.DataFrame:
@@ -86,3 +92,19 @@ def prophet_forecast_by_sku(
         )
 
     return pd.concat(forecasts, ignore_index=True)
+<<<<<<< HEAD
+=======
+
+
+def evaluate_forecast(actual_df: pd.DataFrame, forecast_df: pd.DataFrame) -> dict[str, float]:
+    """Calculate MAE and RMSE comparing actual demand vs forecast."""
+    # actual_df expected to have 'date', 'sku', 'demand_qty'
+    # forecast_df expected to have 'date', 'sku', 'forecast_qty'
+    merged = pd.merge(actual_df, forecast_df, on=["sku", "date"], how="inner")
+    if merged.empty:
+        return {"mae": 0.0, "rmse": 0.0}
+    
+    mae = mean_absolute_error(merged["demand_qty"], merged["forecast_qty"])
+    rmse = np.sqrt(mean_squared_error(merged["demand_qty"], merged["forecast_qty"]))
+    return {"mae": float(mae), "rmse": float(rmse)}
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b

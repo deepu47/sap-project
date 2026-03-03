@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP ML Replenishment Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="dashboard.css?v=5">
+</head>
+
+<body>
+    <div class="dashboard">
+        <header>
+            <h1>📦 SAP S/4HANA EWM Intelligence</h1>
+            <p>Predictive Replenishment & Fail-Safe Routing Demo</p>
+        </header>
+
+        <main>
+            <div class="control-panel glass-card">
+                <h2>Control Panel</h2>
+                <div class="input-group">
+                    <label for="sku-select">Select SKU:</label>
+                    <select id="sku-select" class="premium-input">
+                        <option value="SKU-1A">SKU-1A (High Velocity)</option>
+                        <option value="SKU-2B">SKU-2B (Seasonal)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="scenario-select">Simulation Scenario:</label>
+                    <select id="scenario-select" class="premium-input">
+                        <option value="normal">Normal Operations (No Shortage)</option>
+                        <option value="high_demand">Unusually High Demand Spikes</option>
+                        <option value="logistic_issue">Logistics Issue (Primary DC Offline)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Simulate Primary DC Shortage?</label>
+                    <div class="toggle-container">
+                        <label class="switch">
+                            <input type="checkbox" id="fail-safe-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-text">Trigger Fail-safe Evaluation</span>
+                    </div>
+                </div>
+
+                <h3
+                    style="margin-top: 1rem; color: #cbd5e1; font-size: 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem;">
+                    Feed Real SAP EWM Data (Optional)</h3>
+
+                <div class="input-group">
+                    <label for="demand-csv">Historical Demand CSV (cols: sku, date, demand_qty):</label>
+                    <input type="file" id="demand-csv" accept=".csv" class="premium-input" style="padding: 0.5rem;">
+                </div>
+
+                <div class="input-group">
+                    <label for="inventory-csv">Current Inventory CSV (cols: sku, site, on_hand_qty):</label>
+                    <input type="file" id="inventory-csv" accept=".csv" class="premium-input" style="padding: 0.5rem;">
+                </div>
+
+                <div class="input-group">
+                    <label for="network-csv">Network Topology CSV (cols: target_site, source_site, transit_time_days,
+                        cost):</label>
+                    <input type="file" id="network-csv" accept=".csv" class="premium-input" style="padding: 0.5rem;">
+                </div>
+
+                <button id="run-demo-btn" class="primary-btn">Run ML Pipeline</button>
+            </div>
+
+            <div class="results-panel">
+                <div id="forecast-card" class="glass-card result-box">
+                    <h2>📈 Demand Forecast Output</h2>
+                    <div class="loading-spinner" id="forecast-spinner" style="display:none;"></div>
+                    <div class="chart-container" style="position: relative; height:300px; width:100%">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                </div>
+
+                <div id="routing-card" class="glass-card result-box highlight-card">
+                    <h2>🚦 Fail-Safe Logistics Router</h2>
+                    <div class="loading-spinner" id="routing-spinner" style="display:none;"></div>
+                    <div id="routing-content" class="content-container">Awaiting routing directives...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="main.js?v=5"></script>
+</body>
+
+</html>

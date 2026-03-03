@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import pandas as pd
+<<<<<<< HEAD
+=======
+import numpy as np
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 
 
 def clean_demand_history(df: pd.DataFrame) -> pd.DataFrame:
@@ -16,4 +20,16 @@ def clean_demand_history(df: pd.DataFrame) -> pd.DataFrame:
     cleaned["date"] = pd.to_datetime(cleaned["date"], errors="coerce")
     cleaned["demand_qty"] = pd.to_numeric(cleaned["demand_qty"], errors="coerce").fillna(0)
     cleaned = cleaned.dropna(subset=["date", "sku", "site"])
+<<<<<<< HEAD
+=======
+    
+    # Handle abnormal demand spikes (clip to 99th percentile per SKU)
+    def clip_outliers(group):
+        upper_limit = group["demand_qty"].quantile(0.99)
+        group["demand_qty"] = np.where(group["demand_qty"] > upper_limit, upper_limit, group["demand_qty"])
+        return group
+        
+    cleaned = cleaned.groupby("sku", group_keys=False).apply(clip_outliers, include_groups=False)
+    
+>>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
     return cleaned.sort_values(["sku", "site", "date"]).reset_index(drop=True)
