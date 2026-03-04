@@ -1,8 +1,8 @@
-"""Minimal API service exposing forecasting and replenishment endpoints."""
+"""Enterprise API service exposing advanced forecasting and replenishment endpoints."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -10,10 +10,11 @@ from pydantic import BaseModel
 import pandas as pd
 import os
 
-from src.forecast_model import prophet_forecast_by_sku
-from src.replenishment_logic import calculate_reorder_point, evaluate_fail_safe_routes
+from src.prophet_forecast_by_sku import prophet_forecast_optimized
+from src.classification import classify_abc_xyz
+from src.replenishment_logic import calculate_reorder_point_advanced, evaluate_fail_safe_routes
 
-app = FastAPI(title="SAP EWM Forecast & Replenishment Service")
+app = FastAPI(title="SAP EWM Advanced Forecast & Replenishment Service")
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,13 +26,16 @@ app.add_middleware(
 
 class ForecastRequest(BaseModel):
     sku: str
-    historical_demand: list[dict[str, Any]]
+    historical_demand: List[dict[str, Any]]
     periods: int = 14
 
 class ReplenishRequest(BaseModel):
-    forecast_data: list[dict[str, Any]]
-    inventory_data: list[dict[str, Any]]
-    network_data: list[dict[str, Any]]
+    forecast_data: List[dict[str, Any]]
+    inventory_data: List[dict[str, Any]]
+    network_data: List[dict[str, Any]]
+    historical_demand: List[dict[str, Any]]  # For ABC/XYZ classification
+    lead_time_data: Optional[List[dict[str, Any]]] = None # Optional SKU-Site LT data
+    review_period_days: int = 1
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -43,26 +47,58 @@ def forecast_sku(sku: str, req: ForecastRequest):
     df = pd.DataFrame(req.historical_demand)
     df["sku"] = sku
     try:
-        forecast = prophet_forecast_by_sku(df, periods=req.periods)
+        forecast = prophet_forecast_optimized(df, periods=req.periods)
         return forecast.to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/replenish")
 def replenish(req: ReplenishRequest):
-    forecast_df = pd.DataFrame(req.forecast_data)
-    inventory_df = pd.DataFrame(req.inventory_data)
-    network_df = pd.DataFrame(req.network_data)
-    
+    """
+    Advanced Replenishment endpoint using ABC/XYZ classification 
+     and Inventory Position logic from @inventory-demand-planning.
+    """
     try:
-        reorder_df = calculate_reorder_point(forecast_df)
-        recs = evaluate_fail_safe_routes(reorder_df, inventory_df, network_df, target_date=pd.Timestamp.now())
+        # 1. Convert inputs to DataFrames
+        forecast_df = pd.DataFrame(req.forecast_data)
+        inventory_df = pd.DataFrame(req.inventory_data)
+        network_df = pd.DataFrame(req.network_data)
+        history_df = pd.DataFrame(req.historical_demand)
+        
+        # 2. Perform ABC/XYZ Classification to get Z-Scores
+        sku_metadata = classify_abc_xyz(history_df)
+        
+        # 3. Handle Lead Time Data (use defaults if not provided)
+        if req.lead_time_data:
+            lt_df = pd.DataFrame(req.lead_time_data)
+        else:
+            # Create empty placeholder to trigger defaults in replenishment_logic
+            lt_df = pd.DataFrame(columns=["sku", "site", "lt_avg", "sigma_lt"])
+
+        # 4. Calculate Advanced Reorder Point (Enterprise Grade)
+        reorder_df = calculate_reorder_point_advanced(
+            forecast_df=forecast_df,
+            sku_metadata_df=sku_metadata,
+            lead_time_df=lt_df,
+            review_period_days=req.review_period_days
+        )
+        
+        # 5. Evaluate Routes using Inventory Position (IP)
+        recs = evaluate_fail_safe_routes(
+            reorder_df=reorder_df, 
+            inventory_df=inventory_df, 
+            network_locations_df=network_df, 
+            target_date=pd.Timestamp.now()
+        )
+        
         return recs.to_dict(orient="records")
+        
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))
 
 # Mount frontend at root if directory exists
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-
