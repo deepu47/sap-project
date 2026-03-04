@@ -1,6 +1,6 @@
 let forecastChart = null;
 
-document.getElementById('run-demo-btn').addEventListener('click', async () => {
+async function runDemoSequence(customHistory = null) {
     const sku = document.getElementById('sku-select').value;
     const forceShortage = document.getElementById('fail-safe-toggle').checked;
 
@@ -25,22 +25,26 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
     rtContent.innerText = '';
 
     // 1. Generate Historical Target Data
-    const history = [];
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() - 30);
+    let history = [];
+    if (customHistory && customHistory.length > 0) {
+        history = customHistory;
+    } else {
+        const baseDate = new Date();
+        baseDate.setDate(baseDate.getDate() - 30);
 
-    for (let i = 0; i < 30; i++) {
-        const d = new Date(baseDate);
-        d.setDate(d.getDate() + i);
-        history.push({
-            date: d.toISOString().split('T')[0],
-            demand_qty: Math.floor(Math.random() * 20) + 10
-        });
+        for (let i = 0; i < 30; i++) {
+            const d = new Date(baseDate);
+            d.setDate(d.getDate() + i);
+            history.push({
+                date: d.toISOString().split('T')[0],
+                demand_qty: Math.floor(Math.random() * 20) + 10
+            });
+        }
     }
 
     try {
         // CALL FORECAST ENDPOINT
-        const baseUrl = window.location.origin.includes('8000') ? window.location.origin : 'http://localhost:8000';
+        const baseUrl = window.location.origin;
 
         const forecastRes = await fetch(`${baseUrl}/forecast/${sku}`, {
             method: 'POST',
@@ -195,4 +199,110 @@ document.getElementById('run-demo-btn').addEventListener('click', async () => {
         rtContent.innerText = `Error connecting to FastAPI backend: ${err.message}\nMake sure uvicorn is running.`;
         rtContent.style.color = '#fca5a5';
     }
+}
+
+document.getElementById('run-demo-btn').addEventListener('click', () => runDemoSequence());
+
+// CSV Modal Logic
+const csvModal = document.getElementById('csv-upload-modal');
+const openModalBtn = document.getElementById('open-upload-modal-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const processCsvBtn = document.getElementById('process-csv-btn');
+const csvErrorMsg = document.getElementById('csv-error-msg');
+
+if (openModalBtn) {
+    openModalBtn.addEventListener('click', () => {
+        csvModal.style.display = 'flex';
+        csvErrorMsg.style.display = 'none';
+        document.getElementById('csv-file-input').value = '';
+    });
+}
+
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => {
+        csvModal.style.display = 'none';
+    });
+}
+
+window.addEventListener('click', (event) => {
+    if (event.target === csvModal) {
+        csvModal.style.display = 'none';
+    }
 });
+
+if (processCsvBtn) {
+    processCsvBtn.addEventListener('click', () => {
+        const fileInput = document.getElementById('csv-file-input');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showCsvError('Please select a CSV file to upload.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const text = e.target.result;
+            try {
+                const parsedHistory = parseCSV(text);
+                csvModal.style.display = 'none';
+                runDemoSequence(parsedHistory);
+            } catch (err) {
+                showCsvError(err.message);
+            }
+        };
+        reader.onerror = function () {
+            showCsvError('Error reading file.');
+        };
+        reader.readAsText(file);
+    });
+}
+
+function showCsvError(msg) {
+    csvErrorMsg.innerText = msg;
+    csvErrorMsg.style.display = 'block';
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+        throw new Error('CSV file is empty or missing data rows.');
+    }
+
+    // Check for correct headers
+    const headers = lines[0].replace('\r', '').split(',').map(h => h.trim().toLowerCase());
+    if (headers[0] !== 'date' || headers[1] !== 'demand_qty') {
+        throw new Error('Invalid headers or order. Please ensure the first column is "date" and the second is "demand_qty".');
+    }
+
+    const historyData = [];
+    for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].replace('\r', '').trim();
+        if (!row) continue;
+
+        const cols = row.split(',').map(c => c.trim());
+        if (cols.length < 2) continue;
+
+        const dateStr = cols[0];
+        const demandQty = parseFloat(cols[1]);
+
+        // Basic validation YYYY-MM-DD
+        if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            throw new Error(`Invalid date format at row ${i + 1}: ${dateStr}. Expected YYYY-MM-DD.`);
+        }
+        if (isNaN(demandQty)) {
+            throw new Error(`Invalid demand_qty at row ${i + 1}: ${cols[1]}. Must be a number.`);
+        }
+
+        historyData.push({
+            date: dateStr,
+            demand_qty: demandQty
+        });
+    }
+
+    if (historyData.length === 0) {
+        throw new Error('No valid data rows found in the CSV.');
+    }
+
+    return historyData;
+}

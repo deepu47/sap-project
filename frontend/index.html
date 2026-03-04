@@ -45,7 +45,8 @@
                         <span class="toggle-text">Trigger Fail-safe Evaluation</span>
                     </div>
                 </div>
-                <button id="run-demo-btn" class="primary-btn">Run ML Pipeline</button>
+                <button id="run-demo-btn" class="primary-btn">Run ML Pipeline (Demo Data)</button>
+                <button id="open-upload-modal-btn" class="secondary-btn">Upload Custom CSV Data</button>
             </div>
 
             <div class="results-panel">
@@ -65,7 +66,28 @@
             </div>
         </main>
     </div>
-    <script src="main.js?v=4"></script>
+
+    <!-- CSV Upload Modal -->
+    <div id="csv-upload-modal" class="modal">
+        <div class="modal-content glass-card">
+            <span class="close-btn" id="close-modal-btn">&times;</span>
+            <h2>Upload Historical Demand CSV</h2>
+            <p>Please upload a CSV file with historical demand for the selected SKU. The file <strong>must</strong> have
+                exactly two columns in this specific order, with the exact headers:</p>
+            <ul>
+                <li><strong>date</strong> (Format: YYYY-MM-DD, e.g., 2023-10-01)</li>
+                <li><strong>demand_qty</strong> (Numeric value, e.g., 25)</li>
+            </ul>
+            <div class="file-upload-wrapper">
+                <input type="file" id="csv-file-input" accept=".csv" class="premium-input" style="width: 100%;">
+            </div>
+            <button id="process-csv-btn" class="primary-btn" style="width: 100%; margin-top: 0.5rem;">Predict with
+                Uploaded Data</button>
+            <div id="csv-error-msg" style="color: #fca5a5; margin-top: 1rem; font-size: 0.9rem; display: none;"></div>
+        </div>
+    </div>
+
+    <script src="main.js?v=6"></script>
 </body>
 
 </html>
