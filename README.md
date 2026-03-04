@@ -1,13 +1,11 @@
-<<<<<<< HEAD
 # Scalable Multi-SKU Demand Forecasting & Predictive Replenishment in SAP S/4HANA EWM using SAP BTP AI Core
 
 This repository provides a starter implementation for building a scalable, multi-SKU forecasting and replenishment workflow for **SAP S/4HANA EWM**, powered by **SAP BTP AI Core**.
-=======
+
 # Demand Forecasting & Predictive Replenishment in SAP S/4HANA EWM using SAP BTP AI Core
 
 
 This is a starter implementation for building a scalable, multi-SKU forecasting and replenishment workflow for **SAP S/4HANA EWM**, powered by **SAP BTP AI Core**.
->>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 
 ## Repository Structure
 
@@ -35,10 +33,7 @@ sap-ml-ewm-replenishment/
 ├── architecture/
 │   ├── system_diagram.png
 │
-<<<<<<< HEAD
-=======
 ├── test_workflow.py
->>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 └── README.md
 ```
 
@@ -53,8 +48,7 @@ sap-ml-ewm-replenishment/
 4. Generate replenishment recommendations via `src/replenishment_logic.py`.
 5. Serve forecast/replenishment endpoints through `src/api_service.py`.
 
-<<<<<<< HEAD
-=======
+
 ## Implementation Overview
 
 We successfully implemented a system designed for SAP S/4HANA EWM, powered by SAP BTP AI Core. The solution forecasts multi-SKU demand using `prophet` machine learning models and generates predictive replenishment proposals. It features a fail-safe routing algorithm that optimizes distribution depending on local network availability and lead times.
@@ -87,7 +81,6 @@ Example output response from the routing engine:
 ]
 ```
 
->>>>>>> 8fec0cefb6f1b08040dcf66922934602af8d592b
 ## Notes
 
 - `architecture/system_diagram.png` is a placeholder for your system architecture diagram.
