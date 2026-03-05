@@ -168,7 +168,8 @@ async function runDemoSequence(customHistory = null) {
             body: JSON.stringify({
                 forecast_data: forecastForReplenish,
                 inventory_data: inventoryData,
-                network_data: networkData
+                network_data: networkData,
+                historical_demand: history
             })
         });
 
