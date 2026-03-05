@@ -169,7 +169,7 @@ async function runDemoSequence(customHistory = null) {
                 forecast_data: forecastForReplenish,
                 inventory_data: inventoryData,
                 network_data: networkData,
-                historical_demand: history
+                historical_demand: history.map(h => ({ ...h, sku: sku }))
             })
         });
 
