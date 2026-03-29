@@ -13,6 +13,7 @@ import os
 from src.prophet_forecast_by_sku import prophet_forecast_optimized
 from src.classification import classify_abc_xyz
 from src.replenishment_logic import calculate_reorder_point_advanced, evaluate_fail_safe_routes
+from src.dataset_service import get_orders_data, get_inventory_data, get_fulfillment_data
 
 app = FastAPI(title="SAP EWM Advanced Forecast & Replenishment Service")
 
@@ -97,6 +98,18 @@ def replenish(req: ReplenishRequest):
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/datasets/orders")
+def api_get_orders():
+    return get_orders_data()
+
+@app.get("/api/datasets/inventory")
+def api_get_inventory():
+    return get_inventory_data()
+
+@app.get("/api/datasets/fulfillment")
+def api_get_fulfillment():
+    return get_fulfillment_data()
 
 # Mount frontend at root if directory exists
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")

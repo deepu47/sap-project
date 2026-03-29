@@ -21,6 +21,14 @@
             <div class="control-panel glass-card">
                 <h2>Control Panel</h2>
                 <div class="input-group">
+                    <label for="dataset-select">Select Target Dataset:</label>
+                    <select id="dataset-select" class="premium-input">
+                        <option value="Orders_and_shipments">Orders & Shipments</option>
+                        <option value="Inventory">Inventory</option>
+                        <option value="Fulfillment">Fulfillment</option>
+                    </select>
+                </div>
+                <div class="input-group" id="sku-group">
                     <label for="sku-select">Select SKU:</label>
                     <select id="sku-select" class="premium-input">
                         <option value="SKU-1A">SKU-1A (High Velocity)</option>

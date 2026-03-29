@@ -26,8 +26,25 @@ async function runDemoSequence(customHistory = null) {
 
     // 1. Generate Historical Target Data
     let history = [];
+    const dataset = document.getElementById('dataset-select') ? document.getElementById('dataset-select').value : 'Orders_and_shipments';
+
     if (customHistory && customHistory.length > 0) {
         history = customHistory;
+    } else if (dataset === 'Orders_and_shipments' && window.ordersData) {
+        history = window.ordersData.filter(d => d.sku === sku);
+        if (history.length === 0) {
+            // fallback
+            const baseDate = new Date();
+            baseDate.setDate(baseDate.getDate() - 30);
+            for (let i = 0; i < 30; i++) {
+                const d = new Date(baseDate);
+                d.setDate(d.getDate() + i);
+                history.push({
+                    date: d.toISOString().split('T')[0],
+                    demand_qty: Math.floor(Math.random() * 20) + 10
+                });
+            }
+        }
     } else {
         const baseDate = new Date();
         baseDate.setDate(baseDate.getDate() - 30);
@@ -202,7 +219,157 @@ async function runDemoSequence(customHistory = null) {
     }
 }
 
+async function renderInventoryView() {
+    const fcSpinner = document.getElementById('forecast-spinner');
+    const rtContent = document.getElementById('routing-content');
+
+    if (forecastChart) forecastChart.destroy();
+    const canvas = document.getElementById('forecastChart');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    fcSpinner.style.display = 'block';
+    rtContent.style.display = 'block';
+    rtContent.innerText = 'Inventory view active by Default DC.';
+
+    try {
+        const res = await fetch('/api/datasets/inventory');
+        const data = await res.json();
+
+        fcSpinner.style.display = 'none';
+
+        const labels = data.map(d => d['Product Name'].substring(0, 20));
+        const invData = data.map(d => d['Warehouse Inventory']);
+
+        forecastChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Warehouse Inventory',
+                    data: invData,
+                    backgroundColor: '#10b981',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#f8fafc' } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#cbd5e1' } },
+                    x: { grid: { display: false }, ticks: { color: '#cbd5e1', maxRotation: 45, minRotation: 45 } }
+                }
+            }
+        });
+    } catch (err) {
+        fcSpinner.style.display = 'none';
+        console.error(err);
+    }
+}
+
+async function renderFulfillmentView() {
+    const fcSpinner = document.getElementById('forecast-spinner');
+    const rtContent = document.getElementById('routing-content');
+
+    if (forecastChart) forecastChart.destroy();
+    const canvas = document.getElementById('forecastChart');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    fcSpinner.style.display = 'block';
+    rtContent.style.display = 'block';
+    rtContent.innerText = 'Fulfillment Lead Times displayed.';
+
+    try {
+        const res = await fetch('/api/datasets/fulfillment');
+        const data = await res.json();
+
+        fcSpinner.style.display = 'none';
+
+        const labels = data.map(d => d['Product Name'].substring(0, 20));
+        const leadData = data.map(d => d['fulfillment_days']);
+
+        forecastChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Order Fulfillment (Days)',
+                    data: leadData,
+                    backgroundColor: '#8b5cf6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#f8fafc' } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#cbd5e1' } },
+                    x: { grid: { display: false }, ticks: { color: '#cbd5e1', maxRotation: 45, minRotation: 45 } }
+                }
+            }
+        });
+    } catch (err) {
+        fcSpinner.style.display = 'none';
+        console.error(err);
+    }
+}
+
+async function loadDatasetView() {
+    const dataset = document.getElementById('dataset-select').value;
+    const skuGroup = document.getElementById('sku-group');
+    const demoBtn = document.getElementById('run-demo-btn');
+    const toggleGroup = document.getElementById('fail-safe-toggle').closest('.input-group');
+    const scenarioGroup = document.getElementById('scenario-select').closest('.input-group');
+
+    if (dataset === 'Orders_and_shipments') {
+        skuGroup.style.display = 'block';
+        demoBtn.style.display = 'block';
+        toggleGroup.style.display = 'block';
+        scenarioGroup.style.display = 'block';
+
+        try {
+            const res = await fetch('/api/datasets/orders');
+            const data = await res.json();
+            window.ordersData = data;
+
+            const uniqueSKUs = [...new Set(data.map(item => item.sku))];
+            const skuSelect = document.getElementById('sku-select');
+            skuSelect.innerHTML = '';
+            uniqueSKUs.forEach(sku => {
+                const opt = document.createElement('option');
+                opt.value = sku;
+                opt.innerText = sku;
+                skuSelect.appendChild(opt);
+            });
+            if (uniqueSKUs.length > 0) {
+                runDemoSequence();
+            }
+        } catch (e) { console.error(e); }
+    } else if (dataset === 'Inventory') {
+        skuGroup.style.display = 'none';
+        demoBtn.style.display = 'none';
+        toggleGroup.style.display = 'none';
+        scenarioGroup.style.display = 'none';
+        renderInventoryView();
+    } else if (dataset === 'Fulfillment') {
+        skuGroup.style.display = 'none';
+        demoBtn.style.display = 'none';
+        toggleGroup.style.display = 'none';
+        scenarioGroup.style.display = 'none';
+        renderFulfillmentView();
+    }
+}
+
+document.getElementById('dataset-select')?.addEventListener('change', loadDatasetView);
 document.getElementById('run-demo-btn').addEventListener('click', () => runDemoSequence());
+
+// Init dataset view on load
+if (document.getElementById('dataset-select')) {
+    loadDatasetView();
+}
 
 // CSV Modal Logic
 const csvModal = document.getElementById('csv-upload-modal');
