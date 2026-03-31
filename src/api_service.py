@@ -11,6 +11,7 @@ import pandas as pd
 import os
 
 from src.prophet_forecast_by_sku import prophet_forecast_optimized
+from src.hybrid_forecast import hybrid_forecast_optimized
 from src.classification import classify_abc_xyz
 from src.replenishment_logic import calculate_reorder_point_advanced, evaluate_fail_safe_routes
 from src.dataset_service import get_orders_data, get_inventory_data, get_fulfillment_data
@@ -29,6 +30,7 @@ class ForecastRequest(BaseModel):
     sku: str
     historical_demand: List[dict[str, Any]]
     periods: int = 14
+    model_type: str = "prophet"
 
 class ReplenishRequest(BaseModel):
     forecast_data: List[dict[str, Any]]
@@ -48,7 +50,10 @@ def forecast_sku(sku: str, req: ForecastRequest):
     df = pd.DataFrame(req.historical_demand)
     df["sku"] = sku
     try:
-        forecast = prophet_forecast_optimized(df, periods=req.periods)
+        if getattr(req, "model_type", "prophet").lower() == "hybrid":
+            forecast = hybrid_forecast_optimized(df, periods=req.periods)
+        else:
+            forecast = prophet_forecast_optimized(df, periods=req.periods)
         return forecast.to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
