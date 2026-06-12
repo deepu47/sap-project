@@ -74,3 +74,12 @@ def get_fulfillment_data():
          df = df.rename(columns={'Warehouse Order Fulfillment (days)': 'fulfillment_days'})
          
     return df[['Product Name', 'fulfillment_days']].to_dict(orient='records')
+
+@lru_cache(maxsize=1)
+def get_npi_material_readiness_data():
+    path = os.path.join(DATA_DIR, 'NPI_Material_Readiness.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path)
+    df.columns = df.columns.str.strip()
+    return df.to_dict(orient='records')

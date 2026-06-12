@@ -1,83 +1,359 @@
-# Demand Forecasting & Predictive Replenishment in SAP S/4HANA EWM using SAP BTP AI Core
+# SAP ML Replenishment and NPI CTB Dashboard
 
+This project is a FastAPI and Chart.js demo for SAP-style supply chain intelligence. It combines demand forecasting, predictive replenishment, fail-safe routing, and an AI-ready NPI material readiness dashboard that determines whether a prototype build is Clear-to-Build (CTB).
 
-This is a starter implementation for building a scalable, multi-SKU forecasting and replenishment workflow for **SAP S/4HANA EWM**, powered by **SAP BTP AI Core**.
+## Business Use Cases
+
+### Demand Forecasting and Replenishment
+
+The replenishment workflow forecasts SKU demand, calculates dynamic reorder points, and recommends alternate supply routes when a target distribution center does not have enough inventory.
+
+### NPI Material Readiness and CTB
+
+Engineering prototype builds are often delayed by unavailable components, late supplier commitments, and long-lead-time parts. The NPI CTB dashboard analyzes SAP-like material readiness data and highlights build risk before the build date.
+
+The CTB logic calculates:
+
+```text
+Available Supply = On Hand + Open PO
+
+CTB Status =
+IF Available Supply >= Demand
+    Green
+ELSE
+    Red
+```
+
+It also flags:
+
+- Long lead time greater than 10 weeks
+- Single-source suppliers
+- PO delivery dates later than the build date
+- Supplier on-time delivery below target
+
+The dashboard shows:
+
+- CTB percentage
+- Total material shortage quantity
+- High-risk components
+- Build readiness score
+- Supplier performance
 
 ## Repository Structure
 
 ```text
-sap-ml-ewm-replenishment/
-│
-├── data/
-│   ├── raw/                # SAP extracted data
-│   ├── processed/          # Cleaned time series
-│
-├── notebooks/
-│   ├── exploratory_analysis.ipynb
-│   ├── prophet_model_training.ipynb
-│
-├── src/
-│   ├── data_preprocessing.py
-│   ├── forecast_model.py
-│   ├── replenishment_logic.py
-│   ├── api_service.py
-│
-├── deployment/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│
-├── architecture/
-│   ├── system_diagram.png
-│
-├── test_workflow.py
-└── README.md
+sap-project/
+|-- architecture/
+|   |-- architecture_diagram.html
+|-- data/
+|   |-- Fulfillment.csv
+|   |-- Inventory.csv
+|   |-- NPI_Material_Readiness.csv
+|   |-- Orders_and_shipments.csv
+|-- deployment/
+|   |-- requirements.txt
+|-- frontend/
+|   |-- dashboard.css
+|   |-- index.html
+|   |-- main.js
+|-- src/
+|   |-- api_service.py
+|   |-- classification.py
+|   |-- data_preprocessing.py
+|   |-- dataset_service.py
+|   |-- forecast_model.py
+|   |-- hybrid_forecast.py
+|   |-- npi_readiness.py
+|   |-- prophet_forecast_by_sku.py
+|   |-- replenishment_logic.py
+|-- test_npi_readiness.py
+|-- test_workflow.py
+|-- README.md
 ```
 
-## Quick Start
+## Local Setup
 
-1. Install dependencies:
+1. Create and activate a virtual environment:
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+
+   On Windows PowerShell:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+2. Install dependencies:
+
    ```bash
    pip install -r deployment/requirements.txt
    ```
-2. Prepare and clean demand history data via `src/data_preprocessing.py`.
-3. Train forecasting model(s) using notebook or `src/forecast_model.py` (includes per-SKU Prophet training loop).
-4. Generate replenishment recommendations via `src/replenishment_logic.py`.
-5. Serve forecast/replenishment endpoints through `src/api_service.py`.
 
-## Implementation Overview
+3. Start the FastAPI app:
 
-We successfully implemented a system designed for SAP S/4HANA EWM, powered by SAP BTP AI Core. The solution forecasts multi-SKU demand using `prophet` machine learning models and generates predictive replenishment proposals. It features a fail-safe routing algorithm that optimizes distribution depending on local network availability and lead times.
+   ```bash
+   uvicorn src.api_service:app --reload
+   ```
 
-### Key Components
+4. Open the dashboard:
 
-- **Data Preprocessing** (`src/data_preprocessing.py`): Includes missing value handling and anomalous demand clipping logic (capping outliers at the 99th percentile) to ensure model stability.
-- **Forecasting Engine** (`src/forecast_model.py`): A scalable Prophet-based pipeline for predicting demand, complete with Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) performance evaluation.
-- **Predictive Replenishment & Fail-Safe Routing** (`src/replenishment_logic.py`): Calculates dynamic reorder points factoring in lead time variability and sweeps alternative source Distribution Centers (DCs) or external vendors whenever a primary DC faces a shortage.
-- **Integration API** (`src/api_service.py`): A FastAPI interface conforming to standard request formats, allowing straightforward S/4HANA OData proxy consumption.
+   ```text
+   http://127.0.0.1:8000
+   ```
 
-## Testing & Validation
+5. Use the dataset dropdown to switch between:
 
-Testing was conducted using a local script mimicking backend ERP demands. 
+   - Orders & Shipments
+   - Inventory
+   - Fulfillment
+   - NPI CTB Readiness
 
-**Validation Results**:
-- **Predictive Replenishment Outcome**: In testing, a simulated inventory node (`DC1`) dropped below the dynamically calculated reorder point. The fail-safe router successfully scanned the network data and selected `DC2`, which fulfilled the deficit at optimal cost.
+## API Endpoints
 
-Example output response from the routing engine:
-```json
-[
-  {
-    "sku": "SKU-1A",
-    "target_site": "DC1",
-    "source_site": "DC2",
-    "replenish_qty": 52.375,
-    "transit_time_days": 1,
-    "cost": 50
-  }
-]
+### Health
+
+```http
+GET /health
 ```
 
-## Notes
+### Forecast a SKU
 
-- `architecture/system_diagram.png` is a placeholder for your system architecture diagram.
-- Notebook files are initialized as placeholders and can be expanded for analysis and experimentation.
-- This is a scaffold and should be adapted to your SAP landscape, SKU volume, and deployment standards.
+```http
+POST /forecast/{sku}
+```
+
+Request body:
+
+```json
+{
+  "sku": "SKU-1A",
+  "historical_demand": [
+    { "date": "2026-01-01", "demand_qty": 12 },
+    { "date": "2026-01-02", "demand_qty": 15 }
+  ],
+  "periods": 14,
+  "model_type": "prophet"
+}
+```
+
+### Generate Replenishment Recommendations
+
+```http
+POST /replenish
+```
+
+### Load Demo Datasets
+
+```http
+GET /api/datasets/orders
+GET /api/datasets/inventory
+GET /api/datasets/fulfillment
+GET /api/datasets/npi-material-readiness
+```
+
+### Run NPI CTB Analysis
+
+```http
+GET /api/npi/ctb
+```
+
+This analyzes `data/NPI_Material_Readiness.csv`.
+
+To analyze custom material readiness records:
+
+```http
+POST /api/npi/ctb
+```
+
+Request body:
+
+```json
+{
+  "materials": [
+    {
+      "build_id": "NPI-1001",
+      "build_name": "EVT Alpha Build",
+      "material_id": "COMP-1001",
+      "material_desc": "Main logic board",
+      "supplier_id": "SUP-101",
+      "supplier_name": "Apex Circuits",
+      "demand_qty": 120,
+      "on_hand_qty": 80,
+      "open_po_qty": 50,
+      "po_due_date": "2026-07-02",
+      "build_date": "2026-07-10",
+      "lead_time_weeks": 14,
+      "single_source": true,
+      "supplier_otd_pct": 91,
+      "performance_target_pct": 95
+    }
+  ]
+}
+```
+
+## NPI CTB Data Model
+
+The sample NPI dataset is stored in `data/NPI_Material_Readiness.csv`.
+
+Required columns:
+
+| Column | Description |
+| --- | --- |
+| `build_id` | Prototype build identifier |
+| `build_name` | Human-readable build name |
+| `material_id` | Component or material number |
+| `material_desc` | Component description |
+| `supplier_id` | Supplier identifier |
+| `supplier_name` | Supplier name |
+| `demand_qty` | Required build quantity |
+| `on_hand_qty` | Current available inventory |
+| `open_po_qty` | Quantity expected from open purchase orders |
+| `po_due_date` | Supplier committed delivery date |
+| `build_date` | Prototype build date |
+| `lead_time_weeks` | Component lead time in weeks |
+| `single_source` | Whether the component has only one approved supplier |
+| `supplier_otd_pct` | Supplier on-time delivery percentage |
+| `performance_target_pct` | Target supplier performance percentage |
+
+## Testing
+
+Run the NPI readiness tests:
+
+```bash
+python -m pytest test_npi_readiness.py
+```
+
+Run the original workflow test:
+
+```bash
+python test_workflow.py
+```
+
+If Prophet is unavailable in your local environment, the frontend demo has fallback behavior for forecast continuity, but the backend forecast endpoint still needs the dependencies in `deployment/requirements.txt` for full operation.
+
+## Deploying on Render
+
+Render can host this project as a Python Web Service. The FastAPI backend serves the frontend from the `frontend/` directory, so you only need one Render service.
+
+### 1. Push the Project to GitHub
+
+Commit the project and push it to a GitHub repository connected to your Render account.
+
+If your Git repository root contains the `sap-project/` folder, keep that in mind for the Render root directory setting below.
+
+### 2. Create a Render Web Service
+
+1. Go to the Render dashboard.
+2. Select **New +**.
+3. Select **Web Service**.
+4. Connect your GitHub repository.
+5. Select the branch you want to deploy.
+
+### 3. Configure the Render Service
+
+Use these settings:
+
+| Setting | Value |
+| --- | --- |
+| Runtime | Python 3 |
+| Root Directory | `sap-project` if the repo root is `sap-ml project`; otherwise leave blank if `README.md`, `src/`, and `deployment/` are already at the repo root |
+| Build Command | `pip install -r deployment/requirements.txt` |
+| Start Command | `uvicorn src.api_service:app --host 0.0.0.0 --port $PORT` |
+| Instance Type | Starter or higher |
+
+Render provides the `$PORT` environment variable automatically. The app must bind to `0.0.0.0` and use `$PORT`, not a hard-coded local port.
+
+### 4. Optional Environment Variables
+
+This project does not require environment variables for the included CSV demo data.
+
+You can add these later if connecting to external services:
+
+| Variable | Purpose |
+| --- | --- |
+| `SAP_API_BASE_URL` | SAP or OData API base URL |
+| `SAP_CLIENT_ID` | SAP integration client ID |
+| `SAP_CLIENT_SECRET` | SAP integration client secret |
+| `OPENAI_API_KEY` | Optional GenAI explanations or risk narratives |
+| `DATABASE_URL` | SQL database connection string |
+
+### 5. Deploy
+
+Click **Create Web Service**. Render will:
+
+1. Clone the repository.
+2. Install dependencies from `deployment/requirements.txt`.
+3. Start the app with Uvicorn.
+4. Provide a public URL like:
+
+   ```text
+   https://your-service-name.onrender.com
+   ```
+
+Open that URL in a browser. The dashboard should load directly because `src/api_service.py` mounts the `frontend/` directory at `/`.
+
+### 6. Verify the Deployment
+
+After the service is live, test these URLs:
+
+```text
+https://your-service-name.onrender.com/health
+https://your-service-name.onrender.com/api/npi/ctb
+https://your-service-name.onrender.com
+```
+
+Expected health response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+For the NPI CTB endpoint, the sample dataset currently returns a Red build status because some components are short or late.
+
+### 7. Troubleshooting Render Deployments
+
+#### Build Fails While Installing Prophet
+
+`prophet` can be heavier than the other dependencies. If the Render build fails while compiling or installing Prophet:
+
+1. Confirm the service is using Python 3.10 or 3.11 if available.
+2. Upgrade pip in the build command:
+
+   ```bash
+   pip install --upgrade pip && pip install -r deployment/requirements.txt
+   ```
+
+3. If the app only needs the CTB dashboard and not Prophet forecasting, remove `prophet==1.1.5` from `deployment/requirements.txt` and redeploy.
+
+#### App Starts Locally but Not on Render
+
+Check that the start command is exactly:
+
+```bash
+uvicorn src.api_service:app --host 0.0.0.0 --port $PORT
+```
+
+Common mistakes are using `localhost`, using port `8000`, or starting from the wrong root directory.
+
+#### Frontend Loads but API Calls Fail
+
+The frontend uses relative URLs such as `/api/npi/ctb`, so API calls should work when the FastAPI app serves the frontend. If you split the frontend and backend into separate services later, enable CORS for the frontend domain and update the fetch base URL.
+
+#### Data Changes Do Not Show Up
+
+The dataset loader uses in-memory caching. Restart the Render service after changing CSV files so the app reloads the latest data.
+
+## Production Notes
+
+- Replace CSV files with SQL views or SAP OData extracts for production use.
+- Store secrets in Render environment variables, not in source files.
+- Add authentication before exposing supplier or build readiness data publicly.
+- Consider a scheduled ETL job to refresh material, PO, supplier, and inventory tables.
+- Add GenAI summarization only after deterministic CTB rules are validated, so the model explains risks rather than deciding them.
+

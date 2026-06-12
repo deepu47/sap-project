@@ -26,6 +26,7 @@
                         <option value="Orders_and_shipments">Orders & Shipments</option>
                         <option value="Inventory">Inventory</option>
                         <option value="Fulfillment">Fulfillment</option>
+                        <option value="NPI_CTB">NPI CTB Readiness</option>
                     </select>
                 </div>
                 <div class="input-group" id="sku-group">
@@ -59,15 +60,16 @@
 
             <div class="results-panel">
                 <div id="forecast-card" class="glass-card result-box">
-                    <h2>📈 Demand Forecast Output</h2>
+                    <h2 id="chart-title">Demand Forecast Output</h2>
                     <div class="loading-spinner" id="forecast-spinner" style="display:none;"></div>
+                    <div id="ctb-summary" class="kpi-grid" style="display:none;"></div>
                     <div class="chart-container" style="position: relative; height:300px; width:100%">
                         <canvas id="forecastChart"></canvas>
                     </div>
                 </div>
 
                 <div id="routing-card" class="glass-card result-box highlight-card">
-                    <h2>🚦 Fail-Safe Logistics Router</h2>
+                    <h2 id="detail-title">Fail-Safe Logistics Router</h2>
                     <div class="loading-spinner" id="routing-spinner" style="display:none;"></div>
                     <div id="routing-content" class="content-container">Awaiting routing directives...</div>
                 </div>
