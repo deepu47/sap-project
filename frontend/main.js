@@ -3,6 +3,8 @@ let forecastChart = null;
 async function runDemoSequence(customHistory = null) {
     const sku = document.getElementById('sku-select').value;
     const forceShortage = document.getElementById('fail-safe-toggle').checked;
+    setPanelTitles('Demand Forecast Output', 'Fail-Safe Logistics Router');
+    document.getElementById('ctb-summary').style.display = 'none';
 
     // Defensive check in case browser is caching old HTML
     const scenarioDropdown = document.getElementById('scenario-select');
@@ -222,6 +224,8 @@ async function runDemoSequence(customHistory = null) {
 async function renderInventoryView() {
     const fcSpinner = document.getElementById('forecast-spinner');
     const rtContent = document.getElementById('routing-content');
+    setPanelTitles('Inventory Position', 'Inventory Details');
+    document.getElementById('ctb-summary').style.display = 'none';
 
     if (forecastChart) forecastChart.destroy();
     const canvas = document.getElementById('forecastChart');
@@ -271,6 +275,8 @@ async function renderInventoryView() {
 async function renderFulfillmentView() {
     const fcSpinner = document.getElementById('forecast-spinner');
     const rtContent = document.getElementById('routing-content');
+    setPanelTitles('Supplier Fulfillment Lead Times', 'Fulfillment Details');
+    document.getElementById('ctb-summary').style.display = 'none';
 
     if (forecastChart) forecastChart.destroy();
     const canvas = document.getElementById('forecastChart');
@@ -317,6 +323,169 @@ async function renderFulfillmentView() {
     }
 }
 
+async function renderNpiCTBView() {
+    const fcSpinner = document.getElementById('forecast-spinner');
+    const rtContent = document.getElementById('routing-content');
+    const summaryEl = document.getElementById('ctb-summary');
+
+    setPanelTitles('NPI Clear-to-Build Readiness', 'Material Shortages & Risk Drivers');
+
+    if (forecastChart) forecastChart.destroy();
+    const canvas = document.getElementById('forecastChart');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    fcSpinner.style.display = 'block';
+    summaryEl.style.display = 'none';
+    rtContent.style.display = 'block';
+    rtContent.innerHTML = 'Calculating CTB readiness...';
+
+    try {
+        const res = await fetch('/api/npi/ctb');
+        const data = await res.json();
+        if (!res.ok || data.detail) {
+            throw new Error(data.detail || 'Unable to analyze NPI material readiness.');
+        }
+
+        fcSpinner.style.display = 'none';
+        const summary = data.summary;
+        summaryEl.innerHTML = `
+            <div class="kpi-card ${summary.ctb_status === 'Green' ? 'ok' : 'alert'}">
+                <span>CTB %</span>
+                <strong>${summary.ctb_pct}%</strong>
+            </div>
+            <div class="kpi-card">
+                <span>Readiness Score</span>
+                <strong>${summary.readiness_score}</strong>
+            </div>
+            <div class="kpi-card alert">
+                <span>Shortage Qty</span>
+                <strong>${summary.total_shortage_qty}</strong>
+            </div>
+            <div class="kpi-card">
+                <span>Supplier OTD</span>
+                <strong>${summary.avg_supplier_performance}%</strong>
+            </div>
+        `;
+        summaryEl.style.display = 'grid';
+
+        const shortageLabels = data.components.map(c => c.material_id);
+        const shortageValues = data.components.map(c => c.shortage_qty);
+        const supplyValues = data.components.map(c => c.available_supply);
+
+        forecastChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: shortageLabels,
+                datasets: [
+                    {
+                        label: 'Available Supply',
+                        data: supplyValues,
+                        backgroundColor: '#10b981',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Shortage',
+                        data: shortageValues,
+                        backgroundColor: '#ef4444',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#f8fafc' } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#cbd5e1' } },
+                    x: { grid: { display: false }, ticks: { color: '#cbd5e1', maxRotation: 45, minRotation: 45 } }
+                }
+            }
+        });
+
+        rtContent.innerHTML = buildCtbDetailHtml(data);
+        rtContent.style.color = '#e2e8f0';
+    } catch (err) {
+        fcSpinner.style.display = 'none';
+        rtContent.innerHTML = `Error calculating CTB readiness: ${escapeHtml(err.message)}`;
+        rtContent.style.color = '#fca5a5';
+    }
+}
+
+function buildCtbDetailHtml(data) {
+    const shortageRows = data.shortages.length
+        ? data.shortages.map(component => `
+            <tr>
+                <td>${escapeHtml(component.material_id)}</td>
+                <td>${escapeHtml(component.material_desc)}</td>
+                <td>${component.demand_qty}</td>
+                <td>${component.available_supply}</td>
+                <td>${component.shortage_qty}</td>
+                <td>${escapeHtml(component.risk_flags.join(', ') || 'None')}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="6">No material shortages. Build is clear from a supply quantity view.</td></tr>';
+
+    const supplierRows = data.supplier_performance.slice(0, 5).map(supplier => `
+        <tr>
+            <td>${escapeHtml(supplier.supplier_name)}</td>
+            <td>${supplier.supplier_otd_pct}%</td>
+            <td>${supplier.component_count}</td>
+            <td>${supplier.risk_count}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <div class="ctb-meta">
+            <strong>${escapeHtml(data.summary.build_name)}</strong>
+            <span>Build Date: ${escapeHtml(data.summary.build_date)}</span>
+            <span>Status: ${escapeHtml(data.summary.ctb_status)}</span>
+            <span>High-Risk Components: ${data.summary.high_risk_components}</span>
+        </div>
+        <h3>Material Shortages</h3>
+        <table class="ctb-table">
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Description</th>
+                    <th>Demand</th>
+                    <th>Supply</th>
+                    <th>Shortage</th>
+                    <th>Risks</th>
+                </tr>
+            </thead>
+            <tbody>${shortageRows}</tbody>
+        </table>
+        <h3>Supplier Performance</h3>
+        <table class="ctb-table">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>OTD</th>
+                    <th>Parts</th>
+                    <th>Risk Flags</th>
+                </tr>
+            </thead>
+            <tbody>${supplierRows}</tbody>
+        </table>
+    `;
+}
+
+function setPanelTitles(chartTitle, detailTitle) {
+    document.getElementById('chart-title').innerText = chartTitle;
+    document.getElementById('detail-title').innerText = detailTitle;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, match => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[match]));
+}
+
 async function loadDatasetView() {
     const dataset = document.getElementById('dataset-select').value;
     const skuGroup = document.getElementById('sku-group');
@@ -360,6 +529,12 @@ async function loadDatasetView() {
         toggleGroup.style.display = 'none';
         scenarioGroup.style.display = 'none';
         renderFulfillmentView();
+    } else if (dataset === 'NPI_CTB') {
+        skuGroup.style.display = 'none';
+        demoBtn.style.display = 'none';
+        toggleGroup.style.display = 'none';
+        scenarioGroup.style.display = 'none';
+        renderNpiCTBView();
     }
 }
 

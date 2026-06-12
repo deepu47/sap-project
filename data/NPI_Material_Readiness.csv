@@ -1,0 +1,11 @@
+build_id,build_name,material_id,material_desc,supplier_id,supplier_name,demand_qty,on_hand_qty,open_po_qty,po_due_date,build_date,lead_time_weeks,single_source,supplier_otd_pct,supplier_quality_ppm,performance_target_pct
+NPI-1001,EVT Alpha Build,COMP-1001,Main logic board,SUP-101,Apex Circuits,120,80,50,2026-07-02,2026-07-10,14,true,91,850,95
+NPI-1001,EVT Alpha Build,COMP-1002,Camera module,SUP-102,Northstar Optics,120,30,60,2026-07-18,2026-07-10,12,true,88,1100,95
+NPI-1001,EVT Alpha Build,COMP-1003,Battery pack,SUP-103,VoltEdge Energy,120,130,20,2026-07-05,2026-07-10,9,false,96,240,95
+NPI-1001,EVT Alpha Build,COMP-1004,USB-C connector,SUP-104,Harbor Interconnect,240,180,80,2026-07-09,2026-07-10,6,false,97,180,95
+NPI-1001,EVT Alpha Build,COMP-1005,Thermal pad,SUP-105,ThermaForm,120,55,30,2026-06-30,2026-07-10,4,false,93,320,95
+NPI-1001,EVT Alpha Build,COMP-1006,Custom enclosure,SUP-106,ForgeWorks,120,20,120,2026-07-22,2026-07-10,16,true,82,1500,95
+NPI-1001,EVT Alpha Build,COMP-1007,Wi-Fi module,SUP-107,WaveLink Semi,120,100,25,2026-07-08,2026-07-10,11,true,94,430,95
+NPI-1001,EVT Alpha Build,COMP-1008,Screw kit,SUP-108,Metro Fasteners,600,700,0,2026-06-25,2026-07-10,3,false,99,70,95
+NPI-1001,EVT Alpha Build,COMP-1009,OLED display,SUP-109,Luma Display,120,60,40,2026-07-15,2026-07-10,13,true,90,620,95
+NPI-1001,EVT Alpha Build,COMP-1010,Speaker assembly,SUP-110,ClearTone Acoustics,120,125,0,2026-06-28,2026-07-10,8,false,96,210,95

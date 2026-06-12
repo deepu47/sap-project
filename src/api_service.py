@@ -14,7 +14,13 @@ from src.prophet_forecast_by_sku import prophet_forecast_optimized
 from src.hybrid_forecast import hybrid_forecast_optimized
 from src.classification import classify_abc_xyz
 from src.replenishment_logic import calculate_reorder_point_advanced, evaluate_fail_safe_routes
-from src.dataset_service import get_orders_data, get_inventory_data, get_fulfillment_data
+from src.dataset_service import (
+    get_orders_data,
+    get_inventory_data,
+    get_fulfillment_data,
+    get_npi_material_readiness_data,
+)
+from src.npi_readiness import analyze_ctb
 
 app = FastAPI(title="SAP EWM Advanced Forecast & Replenishment Service")
 
@@ -39,6 +45,9 @@ class ReplenishRequest(BaseModel):
     historical_demand: List[dict[str, Any]]  # For ABC/XYZ classification
     lead_time_data: Optional[List[dict[str, Any]]] = None # Optional SKU-Site LT data
     review_period_days: int = 1
+
+class CTBRequest(BaseModel):
+    materials: List[dict[str, Any]]
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -115,6 +124,25 @@ def api_get_inventory():
 @app.get("/api/datasets/fulfillment")
 def api_get_fulfillment():
     return get_fulfillment_data()
+
+@app.get("/api/datasets/npi-material-readiness")
+def api_get_npi_material_readiness():
+    return get_npi_material_readiness_data()
+
+@app.get("/api/npi/ctb")
+def api_get_npi_ctb():
+    try:
+        df = pd.DataFrame(get_npi_material_readiness_data())
+        return analyze_ctb(df)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/npi/ctb")
+def api_post_npi_ctb(req: CTBRequest):
+    try:
+        return analyze_ctb(pd.DataFrame(req.materials))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Mount frontend at root if directory exists
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
